@@ -1,4 +1,4 @@
-import torch as t
+import torch
 from torch_geometric.data import Dataset, Data
 import numpy as np
 import pandas as pd
@@ -50,7 +50,7 @@ class GamesDataset(Dataset):
                          edge_index=edge_list,
                          )
 
-            t.save(data, 
+            torch.save(data, 
                        os.path.join(self.processed_dir,
                                     f'data_{index}.pt'))
             
@@ -71,7 +71,7 @@ class GamesDataset(Dataset):
         reviews = game.array[9]
 
         node_features = np.asarray(list(year_released, rating, positive_ratio, reviews))
-        return t.tensor(node_features, dtype=t.float)
+        return torch.tensor(node_features, dtype=torch.float)
     
     def _get_edge_features(self, node, index):
         """
@@ -93,9 +93,9 @@ class GamesDataset(Dataset):
                     if genre in node_genres:
                         edge_list.append(index, ind)
                         break
-        return t.tensor(edge_list, dtype=t.long)
+        return torch.tensor(edge_list, dtype=torch.long)
 
-print(t.__version__)
+print(torch.__version__)
 dataset = GamesDataset(root="data/")
 print(dataset[0].edge_index.t())
 print(dataset[0].x)
