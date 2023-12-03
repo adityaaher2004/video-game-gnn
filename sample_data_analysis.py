@@ -5,7 +5,8 @@ genre_occurrences = {}
 total_genres = 0
 total_occurrences = 0
 
-with open('games_metadata.json', 'r', encoding='utf-8') as file:
+fname = "data/games_metadata.json"
+with open(fname, 'r', encoding='utf-8') as file:
     for line in file:
         try:
             data = json.loads(line)
@@ -24,8 +25,8 @@ with open('games_metadata.json', 'r', encoding='utf-8') as file:
 print(f"Total Genres = ", total_genres)
 print(f"Total Occurrences = ", total_occurrences)
 
-filename = "games.csv"
-df = pd.read_csv(filename)
+fname = "data/games.csv"
+df = pd.read_csv(fname)
 print()
 print("Data Frame Information:")
 df_features = df.info()
