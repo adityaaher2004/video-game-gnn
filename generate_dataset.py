@@ -14,7 +14,20 @@ class GamesDataset(Dataset):
 
     @property
     def raw_file_names(self):
+        """
+        if file exists, download is not triggered
+        """
         return "games.csv"
     
     @property
+    def processed_file_names(self):
+        """
+        process skipped if file not found
+        """
+        return "not_implemented.pt"
     
+    def download(self):
+        pass
+
+    def process(self):
+        pass
