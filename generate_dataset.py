@@ -69,8 +69,9 @@ class GamesDataset(Dataset):
         rating = game.array[7]
         positive_ratio = game.array[8]
         reviews = game.array[9]
+        features = [year_released, rating, positive_ratio, reviews]
 
-        node_features = np.asarray(list(year_released, rating, positive_ratio, reviews))
+        node_features = np.asarray(features)
         return torch.tensor(node_features, dtype=torch.float)
     
     def _get_edge_features(self, node, index):
@@ -79,21 +80,34 @@ class GamesDataset(Dataset):
         """
         edge_list = []
         game = node.array
-        id = game.array[0]
-        df_games_meta = pd.read_json(self.raw_paths[1], lines=True, orient="records")
+        id = game[0]
+        print(id)
+        df_games_meta = pd.read_json("raw/games_metadata.json", lines=True, orient="records")
         node_genres = (pd.Series(df_games_meta.loc[index, ['tags']])).iloc[0]
         num = self.data.shape[1]
+        counter = 0
         for ind in range(num):
             if ind == index:
                 continue
             else:
                 target_genres_data = pd.Series(df_games_meta.loc[0, ['tags']])
                 target_genres = target_genres_data.iloc[0]
+                if len(target_genres) >= 8:
+                    target_genres = target_genres[:8]
                 for genre in target_genres:
                     if genre in node_genres:
-                        edge_list.append(index, ind)
+                        edge_list.append([index, ind])
+                        counter += 1
                         break
+                if counter >= 20:
+                  break
         return torch.tensor(edge_list, dtype=torch.long)
+    
+    def len(self):
+      return self.data.shape[0]
+
+    def get(self, idx):
+      data = torch.load(os.path.join(self.processed_dir,f"data_{idx}.pt"))
 
 print(torch.__version__)
 dataset = GamesDataset(root="data/")

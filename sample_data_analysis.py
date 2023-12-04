@@ -25,7 +25,7 @@ with open(fname, 'r', encoding='utf-8') as file:
 print(f"Total Genres = ", total_genres)
 print(f"Total Occurrences = ", total_occurrences)
 
-fname = "data/games_processed.csv"
+fname = "games_processed.csv"
 df = pd.read_csv(fname)
 print()
 print("Data Frame Information:")

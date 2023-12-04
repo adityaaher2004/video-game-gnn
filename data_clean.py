@@ -30,6 +30,9 @@ new_rating = []
 for rating in rating_data:
     if rating not in rating_convert_dict.keys():
         print(f"Rating not present : ", rating)
+        rating = 8
+        continue
     new_rating.append(rating_convert_dict[rating])
 df[rating_column] = new_rating
-df.to_csv("data/games_processed.csv")
+df.to_csv("data/raw/games_processed.csv")
+
