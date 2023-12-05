@@ -2,8 +2,9 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 
-fname = "data/games.csv"
+fname = "data/games_test.csv"
 df = pd.read_csv(fname)
+total_rows = 400
 
 # Normalizing user reviews
 review_column = 'user_reviews'
@@ -34,5 +35,6 @@ for rating in rating_data:
         continue
     new_rating.append(rating_convert_dict[rating])
 df[rating_column] = new_rating
+df = df[:800]
 df.to_csv("data/raw/games_processed.csv")
 
