@@ -8,7 +8,7 @@ import os
 import networkx as nx
 
 class GamesDataset(Dataset):
-    def __init__(self, root, filename, test=False, transform=None, pre_transform=None):
+    def __init__(self, root, filename, test=False, transform=None, pre_transform=None, force_generate=False):
         """
         root -> root directory of data
         raw_dir -> downloaded dataset
@@ -17,6 +17,7 @@ class GamesDataset(Dataset):
         self.test = test
         self.filename = filename
         self.node_mapping = {}
+        self.force_generate = force_generate
         super(GamesDataset, self).__init__(root, transform, pre_transform)
 
     @property
@@ -45,9 +46,18 @@ class GamesDataset(Dataset):
         self.data = pd.read_csv(self.raw_paths[0])
 
         for index, game in tqdm(self.data.iterrows(), total=self.data.shape[0]):
-            self.node_mapping[game.array[1]] = index            
+            self.node_mapping[game.array[1]] = index   
+                     
         for index, game in tqdm(self.data.iterrows(), total=self.data.shape[0]):
-            self.node_mapping[game[0]] = index
+            fname = f'data_{index}.pt'
+            if self.test:
+                fname = f'data_test_{index}.pt'
+
+            if not self.force_generate:
+                if os.path.exists(f'data/processed/{fname}'):
+                    continue
+
+            self.node_mapping[game.iloc[0]] = index
 
             # Get node Features and target labels
             node_features = self._get_node_features(game)
@@ -59,12 +69,7 @@ class GamesDataset(Dataset):
                         edge_attr=edge_attr,
                         y=target_labels)
 
-            if self.test:
-                torch.save(data,
-                        os.path.join(self.processed_dir, f'data_test_{index}.pt'))
-            else:
-                torch.save(data,
-                        os.path.join(self.processed_dir, f'data_{index}.pt'))
+            torch.save(data, os.path.join(self.processed_dir, fname))
             
     def _get_node_features(self, node):
         """
@@ -84,7 +89,8 @@ class GamesDataset(Dataset):
             rating = game.array[7]  
             positive_ratio = game.array[8]
             reviews = game.array[9]
-            features = [year_released, rating, positive_ratio, reviews]
+            game_price = game.array[10]
+            features = [year_released, rating, positive_ratio, reviews, game_price]
             node_features.append(features)
 
         return torch.tensor(node_features, dtype=torch.float)
@@ -107,13 +113,11 @@ class GamesDataset(Dataset):
                 target_ratio = self.data.loc[ind, "positive_ratio"]
                 target_rating = self.data.loc[ind, "rating"]
 
-                # ... (you can add more conditions based on your criteria)
-
                 # Define your criteria for positive and negative links
                 target_genres_data = pd.Series(df_games_meta.loc[ind, ['tags']])
                 target_genres = target_genres_data.iloc[0]
-                if len(target_genres) >= 20:
-                    target_genres = target_genres[:20]
+                if len(target_genres) >= 5:
+                    target_genres = target_genres[:3]
                 set_target = set(target_genres)
                 set_node = set(node_genres)
                 flag = len(set_node.intersection(set_target))
@@ -150,18 +154,25 @@ class GamesDataset(Dataset):
             
                 target_genres_data = pd.Series(df_games_meta.loc[ind, ['tags']])
                 target_genres = target_genres_data.iloc[0]
-                if len(target_genres) >= 10:
-                    target_genres = target_genres[:10]
+                # if len(target_genres) >= 15 or len(node_genres) > 15:
+                #     target_genres = target_genres[:5]
                 set_target = set(target_genres)
                 set_node = set(node_genres)
                 flag = len(set_node.intersection(set_target))
                 if flag > 0:
                     edge_list.append([self.node_mapping[node_id], self.node_mapping[target_id]])
                 edge_attr.append([flag])
-
-                
         
         return torch.tensor(edge_list, dtype=int), torch.tensor(edge_attr, dtype=int)
+    
+    def _get_node_name(self, node):
+        game = node.array
+        node_title = game[1]
+        return node_title
+    
+    def _get_id_name(self, idx):
+        title = self.data.loc[idx, "title"]
+        return title
     
     def len(self):
       return self.data.shape[0]

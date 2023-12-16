@@ -2,24 +2,23 @@ import os.path as osp
 import torch
 from sklearn.metrics import roc_auc_score
 import torch_geometric.transforms as T
-from torch_geometric.transforms import ToDevice
 from torch_geometric.nn import GraphConv
 from torch_geometric.utils import negative_sampling
-from torch_geometric.utils import to_networkx
 from generate_dataset import GamesDataset
-
+import pandas as pd
+import plotly.graph_objects as go
 device = torch.device('cpu')
 
 # Remove the NormalizeFeatures transform
 transform = T.Compose([
     T.NormalizeFeatures(),
     T.ToDevice(device),
-    T.RandomLinkSplit(num_val=0.05, num_test=0.1, is_undirected=True),
+    T.RandomLinkSplit(num_val=0.05, num_test=0.1, is_undirected=True,
+    add_negative_train_samples=True),
 ])
 
 path = osp.join(osp.dirname(osp.realpath(__name__)), 'data')
 dataset = GamesDataset(path, "games_processed.csv", transform=transform)
-graph = dataset
 # Instead of using the transform, split the dataset manually
 train_data, val_data, test_data = dataset[0]
 
@@ -27,7 +26,7 @@ train_data, val_data, test_data = dataset[0]
 class Net(torch.nn.Module):
     def __init__(self, in_channels, hidden_channels, out_channels):
         super().__init__()
-        self.conv1 = GraphConv(in_channels, hidden_channels, node_dim=0)
+        self.conv1 = GraphConv(in_channels, hidden_channels)
         self.conv2 = GraphConv(hidden_channels, out_channels)
 
     def encode(self, x, edge_index):
@@ -67,6 +66,9 @@ def train():
     loss.backward()
     optimizer.step()
     return loss
+ep = []
+val_accuracy = []
+test_accuracy = []
 
 @torch.no_grad()
 def test(data):
@@ -76,10 +78,13 @@ def test(data):
     return roc_auc_score(data.edge_label.cpu().numpy(), out.cpu().numpy())
 
 best_val_auc = final_test_auc = 0
-for epoch in range(1, 100):
+for epoch in range(1, 101):
     loss = train()
     val_auc = test(val_data)
     test_auc = test(test_data)
+    ep.append(epoch)
+    val_accuracy.append(val_auc*100)
+    test_accuracy.append(test_auc*100)
     if val_auc > best_val_auc:
         best_val_auc = val_auc
         final_test_auc = test_auc
@@ -90,3 +95,31 @@ print(f'Final Test: {final_test_auc:.4f}')
 
 z = model.encode(test_data.x, test_data.edge_index)
 final_edge_index = model.decode_all(z)
+
+df = pd.DataFrame(dict(
+    x = ep,
+    y1 = test_accuracy,
+    y2 = val_accuracy
+))
+
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=ep, y=val_accuracy,
+                    mode='lines+markers',
+                    name='Validation Accuray'))
+
+fig.add_trace(go.Scatter(x=ep, y=test_accuracy,
+                    mode='lines+markers',
+                    name='Test Accuray',))
+
+fig.update_layout(legend=dict(
+    yanchor="top",
+    y=0.99,
+    xanchor="left",
+    x=0.88
+))
+
+fig.update_xaxes(range=[1, 70], )
+fig.update_yaxes(range=[-5,100])
+
+fig.show()
+
